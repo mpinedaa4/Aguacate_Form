@@ -185,12 +185,5 @@ ADMIN_TOKEN = "aguacate_admin_2025"
 
 
 if __name__ == "__main__":
-    init_db()
-    print("\n" + "="*52)
-    print("  🥑  Servidor Encuesta Aguacate Hass")
-    print("="*52)
-    print(f"  URL:        http://localhost:5000")
-    print(f"  Base datos: {os.path.abspath(DB_PATH)}")
-    print(f"  Admin token configurado ✓")
-    print("="*52 + "\n")
-    app.run(debug=True, port=5000)
+    init_db()  # crea la base de datos si no existe
+    app.run(host="0.0.0.0", port=5000, debug=True)
