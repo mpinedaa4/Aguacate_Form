@@ -30,6 +30,7 @@ DB_PATH = "encuesta_aguacate.db"
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # Crear tabla si no existe
     c.execute("""
         CREATE TABLE IF NOT EXISTS respuestas (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,8 +43,14 @@ def init_db():
             olor        TEXT    NOT NULL
         )
     """)
+    # Agregar columna probabilidad si no existe
+    c.execute("PRAGMA table_info(respuestas)")
+    cols = [col[1] for col in c.fetchall()]
+    if "prob_compra" not in cols:
+        c.execute("ALTER TABLE respuestas ADD COLUMN prob_compra REAL")
     conn.commit()
     conn.close()
+
 
 
 def get_conn():
@@ -78,6 +85,7 @@ def guardar_respuesta():
         precio_cop = float(data["precio_cop"])
         forma      = str(data["forma"])
         olor       = str(data["olor"])
+        prob_compra = float(data.get("prob_compra", 0.5))
     except (ValueError, TypeError) as e:
         return jsonify({"error": f"Tipo de dato inválido: {e}"}), 400
 
@@ -93,13 +101,15 @@ def guardar_respuesta():
         return jsonify({"error": "Forma inválida"}), 400
     if olor not in ("fresco", "descompuesto"):
         return jsonify({"error": "Olor inválido"}), 400
+    if not (0 <= prob_compra <= 1):
+        return jsonify({"error": "Probabilidad de compra debe estar entre 0 y 1"}), 400
 
     conn = get_conn()
     c = conn.cursor()
     c.execute("""
-        INSERT INTO respuestas (fecha, dureza, color, peso_g, precio_cop, forma, olor)
-        VALUES (datetime('now','localtime'), ?, ?, ?, ?, ?, ?)
-    """, (dureza, color, peso_g, precio_cop, forma, olor))
+        INSERT INTO respuestas (fecha, dureza, color, peso_g, precio_cop, forma, olor, prob_compra)
+        VALUES (datetime('now','localtime'), ?, ?, ?, ?, ?, ?, ?)
+    """, (dureza, color, peso_g, precio_cop, forma, olor, prob_compra))
     conn.commit()
     new_id = c.lastrowid
     conn.close()
@@ -134,7 +144,7 @@ def export_csv():
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id", "fecha", "dureza", "color", "peso_g", "precio_cop", "forma", "olor"])
+    writer.writerow(["id", "fecha", "dureza", "color", "peso_g", "precio_cop", "forma", "olor", "prob_compra"])
     for row in rows:
         writer.writerow(list(row))
 
